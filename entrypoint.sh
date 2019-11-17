@@ -6,6 +6,7 @@ chmod 700 "$DATA_DIR"
 chown -R mfcdaemon "$DATA_DIR"
 
 if [ "$DEBUG" = 'true' ]; then
+    apt update
     apt install -y gdb
     sudo -u mfcdaemon gdb -ex=r --args ./mfcoind "$@" -datadir="$DATA_DIR"
 else

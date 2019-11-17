@@ -13,7 +13,7 @@ RUN variant() { export tmp="$(mktemp)"; if [ "$1" = "$2" ]; then echo "$3" > "$t
     git clone --recursive https://github.com/MFrcoin/MFCoin.git && \
     cd /MFCoin && \
     variant "$VERSION" latest 'echo' "git checkout tags/v.$VERSION" && \
-    variant "$WALLET" true "variant $USE_OLD_BERKLEYDB true 'mkdir /db && cd /db && curl https://download.oracle.com/berkeley-db/db-4.8.30.NC.tar.gz | tar xzf - && sed s/__atomic_compare_exchange/__atomic_compare_exchange_db/g -i /db/db-4.8.30.NC/dbinc/atomic.h && mkdir -p /opt/db && cd ./*/build_unix && ../dist/configure --enable-cxx --disable-shared --with-pic --prefix=/opt/db && make -j$(nproc --all) && make install && rm -rf /opt/db/docs' 'apt install -y libdb5.3 libdb++-dev'" '' && \
+    variant "$WALLET" true "variant $USE_OLD_BERKLEYDB true 'mkdir /db && cd /db && curl https://download.oracle.com/berkeley-db/db-4.8.30.NC.tar.gz | tar xzf - && sed s/__atomic_compare_exchange/__atomic_compare_exchange_db/g -i /db/db-4.8.30.NC/dbinc/atomic.h && mkdir -p /opt/db && cd ./*/build_unix && ../dist/configure --enable-cxx --disable-shared --with-pic --prefix=/opt/db && make -j$(nproc --all) && make install && rm -rf /opt/db/docs' 'apt install -y libdb5.3 libdb5.3++ libdb++-dev'" '' && \
     variant "$UPNPC" true 'apt install -y libminiupnpc10 libminiupnpc-dev' '' && \
     cd /MFCoin && \
     ./autogen.sh && \
@@ -30,7 +30,7 @@ RUN variant() { export tmp="$(mktemp)"; if [ "$1" = "$2" ]; then echo "$3" > "$t
         --without-gui && \
     make -j$(nproc --all) && \
     make install && \
-    cp -r utxo_snapshot genesis.dat genesis-test.dat genesis-reg.dat /opt/mfcoin/ && \
+    cp genesis.dat genesis-test.dat genesis-reg.dat /opt/mfcoin/ && \
     apt remove -y git autoconf automake libtool build-essential curl libboost-all-dev libevent-dev libminiupnpc-dev libdb++-dev libssl-dev && \
     apt autoremove -y && \
     rm -rf /opt/mfcoin/bin/mfcoin-* /db /MFCoin /opt/db/include /opt/db/bin /var/cache /opt/mfcoin/include /opt/mfcoin/lib /opt/mfcoin/share && \
