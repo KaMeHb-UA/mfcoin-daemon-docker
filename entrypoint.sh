@@ -1,14 +1,13 @@
 #!/bin/sh
 set -e
 
-mkdir -p "$DATA_DIR"
-chmod 700 "$DATA_DIR"
-chown -R mfcdaemon "$DATA_DIR"
+chmod 700 /data
+chown -R mfcdaemon /data /home/mfcdaemon
 
 if [ "$DEBUG" = 'true' ]; then
     apt update
     apt install -y gdb
-    sudo -u mfcdaemon gdb -ex=r --args ./mfcoind "$@" -datadir="$DATA_DIR"
+    sudo -u mfcdaemon gdb -ex=r --args ./mfcoind "$@"
 else
-    sudo -u mfcdaemon ./mfcoind "$@" -datadir="$DATA_DIR"
+    sudo -u mfcdaemon ./mfcoind "$@"
 fi

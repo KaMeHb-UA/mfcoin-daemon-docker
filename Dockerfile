@@ -6,6 +6,8 @@ ARG UPNPC=true
 ARG USE_OLD_BERKLEYDB=true
 
 RUN variant() { export tmp="$(mktemp)"; if [ "$1" = "$2" ]; then echo "$3" > "$tmp"; else echo "$4" > "$tmp"; fi; . "$tmp"; rm -f "$tmp"; } && \
+    mkdir -p /home/mfcdaemon /data && \
+    ln -s /data /home/mfcdaemon/.MFC && \
     cp -rp /var/cache /var_cache && \
     useradd -r mfcdaemon && \
     apt update && \
