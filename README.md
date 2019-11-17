@@ -15,5 +15,12 @@ You can define what version to use. For example, 3.0.0.2. This will switch git s
 VERSION=3.0.0.2
 ```
 #### WALLET
-You can disable wallet functionality (helpful for server nodes). Acceptable values = true,false. Default
-
+You can disable wallet functionality (helpful for server nodes). Acceptable values = true,false. Default: true
+```
+WALLET=false
+```
+#### UPNPC
+You can disable firewall-jumping funcyionalit
+```
+WALLET=UPNPC
+```
