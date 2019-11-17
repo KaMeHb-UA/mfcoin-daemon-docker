@@ -20,6 +20,7 @@ RUN variant() { export tmp="$(mktemp)"; if [ "$1" = "$2" ]; then echo "$3" > "$t
     variant "$UPNPC" true 'apt install -y libminiupnpc10 libminiupnpc-dev' '' && \
     cd /MFCoin && \
     ./autogen.sh && \
+    variant "$WALLET" false 'apt install -y libdb++-dev' '' && \
     ./configure \
         $(variant "$WALLET$USE_OLD_BERKLEYDB" truetrue 'echo LDFLAGS=-L/opt/db/lib/' '') \
         $(variant "$WALLET$USE_OLD_BERKLEYDB" truetrue 'echo CPPFLAGS=-I/opt/db/include/' '') \
