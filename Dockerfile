@@ -13,11 +13,10 @@ RUN variant() { export tmp="$(mktemp)"; if [ "$1" = "$2" ]; then echo "$3" > "$t
     git clone --recursive https://github.com/MFrcoin/MFCoin.git && \
     cd /MFCoin && \
     variant "$VERSION" latest 'echo' "git checkout tags/v.$VERSION" && \
-    variant "$WALLET" true "variant $USE_OLD_BERKLEYDB true 'mkdir /db && cd /db && curl https://download.oracle.com/berkeley-db/db-4.8.30.NC.tar.gz | tar xzf - && sed s/__atomic_compare_exchange/__atomic_compare_exchange_db/g -i /db/db-4.8.30.NC/dbinc/atomic.h && mkdir -p /opt/db && cd ./*/build_unix && ../dist/configure --enable-cxx --disable-shared --with-pic --prefix=/opt/db && make -j$(nproc --all) && make install && rm -rf /opt/db/docs' 'echo USING_NEW_BERKLEYDB && apt install -y libdb5.3 libdb++-dev'" '' && \
+    variant "$WALLET" true "variant $USE_OLD_BERKLEYDB true 'mkdir /db && cd /db && curl https://download.oracle.com/berkeley-db/db-4.8.30.NC.tar.gz | tar xzf - && sed s/__atomic_compare_exchange/__atomic_compare_exchange_db/g -i /db/db-4.8.30.NC/dbinc/atomic.h && mkdir -p /opt/db && cd ./*/build_unix && ../dist/configure --enable-cxx --disable-shared --with-pic --prefix=/opt/db && make -j$(nproc --all) && make install && rm -rf /opt/db/docs' 'apt install -y libdb5.3 libdb++-dev'" '' && \
     variant "$UPNPC" true 'apt install -y libminiupnpc10 libminiupnpc-dev' '' && \
     cd /MFCoin && \
     ./autogen.sh && \
-    ls /opt/db/* && \
     ./configure \
         $(variant "$WALLET$USE_OLD_BERKLEYDB" truetrue 'echo LDFLAGS=-L/opt/db/lib/' '') \
         $(variant "$WALLET$USE_OLD_BERKLEYDB" truetrue 'echo CPPFLAGS=-I/opt/db/include/' '') \
