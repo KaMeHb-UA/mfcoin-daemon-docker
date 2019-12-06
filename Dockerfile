@@ -8,7 +8,6 @@ ARG USE_OLD_BERKLEYDB=true
 RUN variant() { export tmp="$(mktemp)"; if [ "$1" = "$2" ]; then echo "$3" > "$tmp"; else echo "$4" > "$tmp"; fi; . "$tmp"; rm -f "$tmp"; } && \
     mkdir -p /home/mfcdaemon /data && \
     ln -s /data /home/mfcdaemon/.MFC && \
-    cp -rp /var/cache /var_cache && \
     useradd -r mfcdaemon && \
     apt update && \
     apt install -y sudo git autoconf pkg-config automake libtool build-essential curl libboost-atomic1.65.1 libboost-chrono1.65.1 libboost-container1.65.1 libboost-context1.65.1 libboost-coroutine1.65.1 libboost-date-time1.65.1 libboost-fiber1.65.1 libboost-filesystem1.65.1 libboost-graph-parallel1.65.1 libboost-graph1.65.1 libboost-iostreams1.65.1 libboost-locale1.65.1 libboost-log1.65.1 libboost-math1.65.1 libboost-mpi-python1.65.1 libboost-mpi1.65.1 libboost-numpy1.65.1 libboost-program-options1.65.1 libboost-python1.65.1 libboost-random1.65.1 libboost-regex1.65.1 libboost-serialization1.65.1 libboost-signals1.65.1 libboost-stacktrace1.65.1 libboost-system1.65.1 libboost-test1.65.1 libboost-thread1.65.1 libboost-timer1.65.1 libboost-type-erasure1.65.1 libboost-wave1.65.1 libboost-all-dev libevent-2.1-6 libevent-pthreads-2.1-6 libevent-dev libssl1.0.0 libssl-dev && \
@@ -26,21 +25,18 @@ RUN variant() { export tmp="$(mktemp)"; if [ "$1" = "$2" ]; then echo "$3" > "$t
         $(variant "$WALLET$USE_OLD_BERKLEYDB" truefalse 'echo --with-incompatible-bdb' '') \
         $(variant "$WALLET" false 'echo --disable-wallet' '') \
         $(variant "$UPNPC" false 'echo --without-miniupnpc' '') \
-        --prefix=/opt/mfcoin \
+        --prefix=/usr \
         --disable-tests \
         --disable-bench \
         --disable-ccache \
         --without-gui && \
     make -j$(nproc --all) && \
     make install && \
-    cp genesis.dat genesis-test.dat genesis-reg.dat /opt/mfcoin/ && \
     apt remove -y git autoconf automake libtool build-essential curl libboost-all-dev libevent-dev libminiupnpc-dev libdb++-dev libssl-dev && \
     apt autoremove -y && \
-    rm -rf /opt/mfcoin/bin/mfcoin-* /db /MFCoin /opt/db/include /opt/db/bin /var/cache /opt/mfcoin/include /opt/mfcoin/lib /opt/mfcoin/share && \
-    mv /var_cache /var/cache
+    rm -rf /usr/bin/mfcoin-* /db /MFCoin /opt/db/include /opt/db/bin /var/cache /usr/share/man /usr/lib/libmfcoinconsensus* /usr/include/mfcoinconsensus* && \
+    strip /usr/bin/mfcoind
 
-COPY entrypoint.sh /
+USER mfcdaemon
 
-WORKDIR /opt/mfcoin/bin
-
-ENTRYPOINT [ "/entrypoint.sh" ]
+ENTRYPOINT [ "/usr/bin/mfcoind" ]
