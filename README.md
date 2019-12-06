@@ -117,6 +117,3 @@ services:
       - daemon:22825
 ```
 Note: the best way to store user and password for rpc service in docker-compose is .env file. Do not forget to chmod it to 600
-
-## Debug
-There is also available `DEBUG` environment variable for this image. Set it to `true` to download gdb and start new gdb session in runtime
