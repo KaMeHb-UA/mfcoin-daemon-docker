@@ -1,26 +1,46 @@
-FROM ubuntu:bionic
+FROM alpine AS berkleydb
+
+RUN apk add --no-cache build-base curl && \
+    mkdir /db && \
+    cd /db && \
+    curl https://download.oracle.com/berkeley-db/db-4.8.30.NC.tar.gz | tar xzf - && \
+    sed s/__atomic_compare_exchange/__atomic_compare_exchange_db/g -i /db/db-4.8.30.NC/dbinc/atomic.h && \
+    mkdir -p /opt/db && \
+    cd ./*/build_unix && \
+    ../dist/configure --enable-cxx --disable-shared --with-pic --prefix=/opt/db && \
+    make -j$(nproc --all) && \
+    make install && \
+    rm -rf /opt/db/docs /db && \
+    apk del --no-cache build-base curl
+
+FROM alpine AS builder
 
 ARG VERSION=latest
 ARG WALLET=true
 ARG UPNPC=true
 ARG USE_OLD_BERKLEYDB=true
 
+COPY --from=berkleydb /opt/db /opt/db
+
+RUN apk add --no-cache git autoconf pkgconfig automake build-base libtool boost-dev libevent-dev openssl-dev
+
+RUN git clone https://github.com/MFrcoin/MFCoin.git
+
 RUN variant() { export tmp="$(mktemp)"; if [ "$1" = "$2" ]; then echo "$3" > "$tmp"; else echo "$4" > "$tmp"; fi; . "$tmp"; rm -f "$tmp"; } && \
-    mkdir -p /home/mfcdaemon /data && \
-    ln -s /data /home/mfcdaemon/.MFC && \
-    useradd -r mfcdaemon && \
-    apt update && \
-    apt install -y sudo git autoconf pkg-config automake libtool build-essential curl libboost-atomic1.65.1 libboost-chrono1.65.1 libboost-container1.65.1 libboost-context1.65.1 libboost-coroutine1.65.1 libboost-date-time1.65.1 libboost-fiber1.65.1 libboost-filesystem1.65.1 libboost-graph-parallel1.65.1 libboost-graph1.65.1 libboost-iostreams1.65.1 libboost-locale1.65.1 libboost-log1.65.1 libboost-math1.65.1 libboost-mpi-python1.65.1 libboost-mpi1.65.1 libboost-numpy1.65.1 libboost-program-options1.65.1 libboost-python1.65.1 libboost-random1.65.1 libboost-regex1.65.1 libboost-serialization1.65.1 libboost-signals1.65.1 libboost-stacktrace1.65.1 libboost-system1.65.1 libboost-test1.65.1 libboost-thread1.65.1 libboost-timer1.65.1 libboost-type-erasure1.65.1 libboost-wave1.65.1 libboost-all-dev libevent-2.1-6 libevent-pthreads-2.1-6 libevent-dev libssl1.0.0 libssl-dev && \
-    git clone https://github.com/MFrcoin/MFCoin.git && \
     cd /MFCoin && \
+    git pull && \
     variant "$VERSION" latest 'echo' "git checkout tags/v.$VERSION" && \
     git submodule update --init --recursive && \
-    variant "$WALLET" true "variant $USE_OLD_BERKLEYDB true 'mkdir /db && cd /db && curl https://download.oracle.com/berkeley-db/db-4.8.30.NC.tar.gz | tar xzf - && sed s/__atomic_compare_exchange/__atomic_compare_exchange_db/g -i /db/db-4.8.30.NC/dbinc/atomic.h && mkdir -p /opt/db && cd ./*/build_unix && ../dist/configure --enable-cxx --disable-shared --with-pic --prefix=/opt/db && make -j$(nproc --all) && make install && rm -rf /opt/db/docs' 'apt install -y libdb5.3 libdb5.3++ libdb++-dev'" '' && \
-    variant "$UPNPC" true 'apt install -y libminiupnpc10 libminiupnpc-dev' '' && \
+    variant "$WALLET" true "variant $USE_OLD_BERKLEYDB false 'apk add --no-cache db-dev' ''" '' && \
+    variant "$UPNPC" true 'apk add --no-cache miniupnpc-dev' '' && \
     cd /MFCoin && \
+    export LDFLAGS="-static-libgcc -static-libstdc++ -static" && \
+    export LIBTOOL_APP_LDFLAGS=-all-static && \
+    export CFLAGS="-lstdc++" && \
+    export CXXFLAGS="-std=c++11" && \
     ./autogen.sh && \
     ./configure \
-        $(variant "$WALLET$USE_OLD_BERKLEYDB" truetrue 'echo LDFLAGS=-L/opt/db/lib/' '') \
+        "$(variant $WALLET$USE_OLD_BERKLEYDB truetrue 'echo LDFLAGS=$LDFLAGS -L/opt/db/lib/' '')" \
         $(variant "$WALLET$USE_OLD_BERKLEYDB" truetrue 'echo CPPFLAGS=-I/opt/db/include/' '') \
         $(variant "$WALLET$USE_OLD_BERKLEYDB" truefalse 'echo --with-incompatible-bdb' '') \
         $(variant "$WALLET" false 'echo --disable-wallet' '') \
@@ -29,14 +49,29 @@ RUN variant() { export tmp="$(mktemp)"; if [ "$1" = "$2" ]; then echo "$3" > "$t
         --disable-tests \
         --disable-bench \
         --disable-ccache \
+        --disable-shared \
+        --with-boost=/usr/include/boost \
+        --with-boost-libdir=/usr/lib \
         --without-gui && \
     make -j$(nproc --all) && \
     make install && \
-    apt remove -y git autoconf automake libtool build-essential curl libboost-all-dev libevent-dev libminiupnpc-dev libdb++-dev libssl-dev && \
-    apt autoremove -y && \
+    apk del --no-cache git autoconf pkg-config automake libtool build-base boost-dev libevent-dev openssl-dev db-dev && \
     rm -rf /usr/bin/mfcoin-* /db /MFCoin /opt/db/include /opt/db/bin /var/cache /usr/share/man /usr/lib/libmfcoinconsensus* /usr/include/mfcoinconsensus* && \
     strip /usr/bin/mfcoind
 
-USER mfcdaemon
+
+FROM alpine
+
+COPY --from=builder /usr/bin/mfcoind /usr/bin
+
+RUN mkdir /lib64 && \
+    ln -s /lib/libc.musl-x86_64.so.1 /lib64/ld-linux-x86-64.so.2 && \
+    ln -s /lib/libc.musl-x86_64.so.1 /lib/ld-linux-x86-64.so.2
+#     && \
+#    apk add --no-cache boost-filesystem=1.65 boost-system=1.65 boost-program_options=1.65 boost-thread=1.65 boost-chrono=1.65 miniupnpc=1.9 libevent=2.1.8 libgcc
+
+USER guest
+
+WORKDIR /data
 
 ENTRYPOINT [ "/usr/bin/mfcoind" ]
