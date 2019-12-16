@@ -22,11 +22,10 @@ ARG USE_OLD_BERKLEYDB=true
 
 COPY --from=berkleydb /opt/db /opt/db
 
-RUN apk add --no-cache git autoconf pkgconfig automake build-base libtool boost-dev libevent-dev openssl-dev
-
-RUN git clone https://github.com/MFrcoin/MFCoin.git
-
 RUN variant() { export tmp="$(mktemp)"; if [ "$1" = "$2" ]; then echo "$3" > "$tmp"; else echo "$4" > "$tmp"; fi; . "$tmp"; rm -f "$tmp"; } && \
+    apk add --no-cache binutils git autoconf pkgconfig automake build-base libtool boost-dev libevent-dev boost-static libevent-static && \
+    apk add --no-cache openssl-dev openssl-libs-static --repository=http://dl-cdn.alpinelinux.org/alpine/edge/main && \
+    git clone https://github.com/MFrcoin/MFCoin.git && \
     cd /MFCoin && \
     git pull && \
     variant "$VERSION" latest 'echo' "git checkout tags/v.$VERSION" && \
@@ -36,12 +35,10 @@ RUN variant() { export tmp="$(mktemp)"; if [ "$1" = "$2" ]; then echo "$3" > "$t
     cd /MFCoin && \
     export LDFLAGS="-static-libgcc -static-libstdc++ -static" && \
     export LIBTOOL_APP_LDFLAGS=-all-static && \
-    export CFLAGS="-lstdc++" && \
-    export CXXFLAGS="-std=c++11" && \
     ./autogen.sh && \
     ./configure \
-        "$(variant $WALLET$USE_OLD_BERKLEYDB truetrue 'echo LDFLAGS=$LDFLAGS -L/opt/db/lib/' '')" \
-        $(variant "$WALLET$USE_OLD_BERKLEYDB" truetrue 'echo CPPFLAGS=-I/opt/db/include/' '') \
+        "$(variant $WALLET$USE_OLD_BERKLEYDB truetrue 'echo LDFLAGS=$LDFLAGS -L/opt/db/lib/ -L/usr/lib/' 'echo LDFLAGS=$LDFLAGS -L/usr/lib/')" \
+        "$(variant $WALLET$USE_OLD_BERKLEYDB truetrue 'echo CPPFLAGS=-I/opt/db/include/ -I/usr/include/boost/' 'echo CPPFLAGS=-I/usr/include/boost/')" \
         $(variant "$WALLET$USE_OLD_BERKLEYDB" truefalse 'echo --with-incompatible-bdb' '') \
         $(variant "$WALLET" false 'echo --disable-wallet' '') \
         $(variant "$UPNPC" false 'echo --without-miniupnpc' '') \
@@ -50,25 +47,17 @@ RUN variant() { export tmp="$(mktemp)"; if [ "$1" = "$2" ]; then echo "$3" > "$t
         --disable-bench \
         --disable-ccache \
         --disable-shared \
-        --with-boost=/usr/include/boost \
-        --with-boost-libdir=/usr/lib \
         --without-gui && \
     make -j$(nproc --all) && \
     make install && \
-    apk del --no-cache git autoconf pkg-config automake libtool build-base boost-dev libevent-dev openssl-dev db-dev && \
-    rm -rf /usr/bin/mfcoin-* /db /MFCoin /opt/db/include /opt/db/bin /var/cache /usr/share/man /usr/lib/libmfcoinconsensus* /usr/include/mfcoinconsensus* && \
-    strip /usr/bin/mfcoind
+    strip /usr/bin/mfcoind && \
+    apk del --no-cache binutils git autoconf pkgconfig automake build-base libtool boost-dev libevent-dev boost-static libevent-static openssl-dev openssl-libs-static $(variant "$WALLET$USE_OLD_BERKLEYDB" truefalse 'echo db-dev' '') && \
+    rm -rf /usr/bin/mfcoin-* /db /MFCoin /opt/db/include /opt/db/bin /var/cache /usr/share/man /usr/lib/libmfcoinconsensus* /usr/include/mfcoinconsensus*
 
 
 FROM alpine
 
 COPY --from=builder /usr/bin/mfcoind /usr/bin
-
-RUN mkdir /lib64 && \
-    ln -s /lib/libc.musl-x86_64.so.1 /lib64/ld-linux-x86-64.so.2 && \
-    ln -s /lib/libc.musl-x86_64.so.1 /lib/ld-linux-x86-64.so.2
-#     && \
-#    apk add --no-cache boost-filesystem=1.65 boost-system=1.65 boost-program_options=1.65 boost-thread=1.65 boost-chrono=1.65 miniupnpc=1.9 libevent=2.1.8 libgcc
 
 USER guest
 
