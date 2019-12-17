@@ -41,32 +41,38 @@ RUN if ! [ "$VERSION" = latest ]; then \
 
 RUN git submodule update --init --recursive
 
-RUN export LDFLAGS="-static-libgcc -static-libstdc++ -static"
-RUN export LIBTOOL_APP_LDFLAGS=-all-static
+RUN echo -n "-static-libgcc -static-libstdc++ -static" > /ldflags
+RUN echo -n -all-static > /ltaldflags
 
-RUN ./autogen.sh
+RUN LDFLAGS="$(cat /ldflags)" LIBTOOL_APP_LDFLAGS="$(cat /ltaldflags)" ./autogen.sh
 
 # flags
 RUN if [ "$WALLET" = true ]; then \
         if [ "$USE_OLD_BERKLEYDB" = true ]; then \
-            export LDFLAGS="$LDFLAGS -L/opt/db/lib/"; \
-            export CPPFLAGS="$CPPFLAGS -I/opt/db/include/"; \
+            echo -n " -L/opt/db/lib/" >> /ldflags; \
+            echo -n " -I/opt/db/include/" >> /cppflags; \
         else \
-            export NEW_WALLET=--with-incompatible-bdb; \
+            echo -n --with-incompatible-bdb > /newdbflag; \
         fi \
     else \
-        export WITHOUT_WALLET=--disable-wallet; \
+        echo -n --disable-wallet > /nowalletflag; \
     fi
-RUN if [ "$UPNPC" = false ]; \
-        export WITHOUT_UPNPC=--without-miniupnpc; \
+RUN if [ "$UPNPC" = false ]; then \
+        echo -n --without-miniupnpc > /noupnpcflag; \
     fi
-RUN export LDFLAGS="$LDFLAGS -L/usr/lib/"
-RUN export CPPFLAGS="$CPPFLAGS -I/usr/include/boost/"
+RUN echo -n " -L/usr/lib/" >> /ldflags
+RUN echo -n " -I/usr/include/boost/" >> /cppflags
 
-RUN ./configure \
+RUN export LDFLAGS="$(cat /ldflags)" && \
+    export CPPFLAGS="$(cat /cppflags)" && \
+    export LIBTOOL_APP_LDFLAGS="$(cat /ltaldflags)" && \
+    export NEW_DB="$(cat /newdbflag)" && \
+    export WITHOUT_WALLET="$(cat /nowalletflag)" && \
+    export WITHOUT_UPNPC="$(cat /noupnpcflag)" && \
+    ./configure \
         LDFLAGS="$LDFLAGS" \
         CPPFLAGS="$CPPFLAGS" \
-        "$NEW_WALLET" \
+        "$NEW_DB" \
         "$WITHOUT_WALLET" \
         "$WITHOUT_UPNPC" \
         --prefix=/usr \
