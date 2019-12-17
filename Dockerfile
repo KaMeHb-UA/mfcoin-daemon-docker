@@ -36,7 +36,7 @@ RUN git clone https://github.com/MFrcoin/MFCoin.git
 WORKDIR /MFCoin
 
 RUN if ! [ "$VERSION" = latest ]; then \
-        git checkout "tags/v.$VERSION" \
+        git checkout "tags/v.$VERSION"; \
     fi
 
 RUN git submodule update --init --recursive
@@ -49,16 +49,16 @@ RUN ./autogen.sh
 # flags
 RUN if [ "$WALLET" = true ]; then \
         if [ "$USE_OLD_BERKLEYDB" = true ]; then \
-            export LDFLAGS="$LDFLAGS -L/opt/db/lib/" \
-            export CPPFLAGS="$CPPFLAGS -I/opt/db/include/" \
+            export LDFLAGS="$LDFLAGS -L/opt/db/lib/"; \
+            export CPPFLAGS="$CPPFLAGS -I/opt/db/include/"; \
         else \
-            export NEW_WALLET=--with-incompatible-bdb \
+            export NEW_WALLET=--with-incompatible-bdb; \
         fi \
     else \
-        export WITHOUT_WALLET=--disable-wallet \
+        export WITHOUT_WALLET=--disable-wallet; \
     fi
 RUN if [ "$UPNPC" = false ]; \
-        export WITHOUT_UPNPC=--without-miniupnpc \
+        export WITHOUT_UPNPC=--without-miniupnpc; \
     fi
 RUN export LDFLAGS="$LDFLAGS -L/usr/lib/"
 RUN export CPPFLAGS="$CPPFLAGS -I/usr/include/boost/"
