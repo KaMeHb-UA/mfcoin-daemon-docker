@@ -12,7 +12,7 @@ RUN mkdir /db && \
 
 WORKDIR /db/db-4.8.30.NC/build_unix
 
-RUN ../dist/configure --enable-cxx --disable-shared --with-pic --prefix=/opt/db
+RUN ../dist/configure --enable-cxx --disable-shared --prefix=/opt/db
 
 RUN make -j$(nproc --all) && \
     make install
