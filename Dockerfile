@@ -1,6 +1,7 @@
-FROM alpine AS berkleydb
+FROM debian AS berkleydb
 
-RUN apk add --no-cache build-base curl
+RUN apt update && \
+    apt install -y build-essential curl libc6-dev
 
 # Download sources and some patching
 RUN mkdir /db && \
@@ -12,13 +13,13 @@ RUN mkdir /db && \
 
 WORKDIR /db/db-4.8.30.NC/build_unix
 
-RUN ../dist/configure --enable-cxx --disable-shared --prefix=/opt/db
+RUN ../dist/configure --enable-cxx --disable-shared --with-pic --prefix=/opt/db
 
 RUN make -j$(nproc --all) && \
     make install
 
 
-FROM alpine AS builder
+FROM debian AS builder
 
 ARG VERSION=latest
 ARG WALLET=true
@@ -27,11 +28,10 @@ ARG USE_OLD_BERKLEYDB=true
 
 COPY --from=berkleydb /opt/db /opt/db
 
-# deps
-RUN apk add --no-cache binutils git autoconf pkgconfig automake build-base libtool boost-dev libevent-dev boost-static libevent-static miniupnpc-dev db-dev && \
-    apk add --no-cache openssl-dev openssl-libs-static --repository=http://dl-cdn.alpinelinux.org/alpine/edge/main
+RUN apt update && \
+    apt install -y build-essential libc6-dev binutils git autoconf pkg-config automake libtool libdb-dev libdb++-dev libboost-all-dev libssl-dev libminiupnpc-dev libevent-dev
 
-RUN git clone https://github.com/MFrcoin/MFCoin.git
+RUN git clone https://github.com/KaMeHb-UA/MFCoin.git
 
 WORKDIR /MFCoin
 
@@ -46,6 +46,8 @@ RUN echo -n -all-static > /ltaldflags
 
 RUN LDFLAGS="$(cat /ldflags)" LIBTOOL_APP_LDFLAGS="$(cat /ltaldflags)" ./autogen.sh
 
+RUN echo "-ldl" > /cppflags
+
 # flags
 RUN if [ "$WALLET" = true ]; then \
         if [ "$USE_OLD_BERKLEYDB" = true ]; then \
@@ -53,6 +55,7 @@ RUN if [ "$WALLET" = true ]; then \
             echo -n " -I/opt/db/include/" >> /cppflags; \
         else \
             echo -n --with-incompatible-bdb > /newdbflag; \
+            echo -n " -I/usr/include/" >> /cppflags; \
         fi \
     else \
         echo -n --disable-wallet > /nowalletflag; \
@@ -69,9 +72,11 @@ RUN export LDFLAGS="$(cat /ldflags)" && \
     export NEW_DB="$(cat /newdbflag)" && \
     export WITHOUT_WALLET="$(cat /nowalletflag)" && \
     export WITHOUT_UPNPC="$(cat /noupnpcflag)" && \
+    export CFLAGS="-static -static-libgcc" && \
     ./configure \
         LDFLAGS="$LDFLAGS" \
-        CPPFLAGS="$CPPFLAGS" \
+        CPPFLAGS="$CPPFLAGS $CFLAGS" \
+        CFLAGS="$CFLAGS" \
         "$NEW_DB" \
         "$WITHOUT_WALLET" \
         "$WITHOUT_UPNPC" \
@@ -83,12 +88,19 @@ RUN export LDFLAGS="$(cat /ldflags)" && \
         --without-gui
 
 RUN make -j$(nproc --all) && \
-    make install && \
-    strip /usr/bin/mfcoin*
+    make install
+# && \
+#    strip /usr/bin/mfcoin*
 
 FROM alpine
 
 COPY --from=builder /usr/bin/mfcoind /usr/bin
+
+RUN apk add --no-cache libc6-compat
+
+RUN apk add --no-cache curl
+
+RUN apk add --no-cache gdb
 
 USER guest
 
