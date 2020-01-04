@@ -46,7 +46,7 @@ RUN echo -n -all-static > /ltaldflags
 
 RUN LDFLAGS="$(cat /ldflags)" LIBTOOL_APP_LDFLAGS="$(cat /ltaldflags)" ./autogen.sh
 
-RUN echo "-ldl" > /cppflags
+RUN echo -n "-ldl" > /cppflags
 
 # flags
 RUN if [ "$WALLET" = true ]; then \
