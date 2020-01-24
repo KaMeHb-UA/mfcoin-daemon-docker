@@ -95,14 +95,12 @@ FROM alpine
 
 COPY --from=builder /usr/bin/mfcoind /usr/bin
 
-RUN apk add --no-cache libc6-compat
-
-RUN apk add --no-cache curl
-
-RUN apk add --no-cache gdb
+RUN apk add --no-cache libc6-compat && \
+    mkdir /data && \
+    chown guest:nobody /data
 
 USER guest
 
-WORKDIR /data
+VOLUME [ "/data" ]
 
-ENTRYPOINT [ "/usr/bin/mfcoind" ]
+ENTRYPOINT [ "/usr/bin/mfcoind", "-datadir=/data" ]
