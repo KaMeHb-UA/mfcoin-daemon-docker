@@ -46,8 +46,6 @@ RUN echo -n -all-static > /ltaldflags
 
 RUN LDFLAGS="$(cat /ldflags)" LIBTOOL_APP_LDFLAGS="$(cat /ltaldflags)" ./autogen.sh
 
-RUN echo -n "-ldl" > /cppflags
-
 # flags
 RUN if [ "$WALLET" = true ]; then \
         if [ "$USE_OLD_BERKLEYDB" = true ]; then \
@@ -72,11 +70,12 @@ RUN export LDFLAGS="$(cat /ldflags)" && \
     export NEW_DB="$(cat /newdbflag)" && \
     export WITHOUT_WALLET="$(cat /nowalletflag)" && \
     export WITHOUT_UPNPC="$(cat /noupnpcflag)" && \
-    export CFLAGS="-static -static-libgcc" && \
+    export CFLAGS="-static -static-libgcc -fno-strict-aliasing" && \
     ./configure \
         LDFLAGS="$LDFLAGS" \
         CPPFLAGS="$CPPFLAGS $CFLAGS" \
         CFLAGS="$CFLAGS" \
+        LIBS=-ldl \
         "$NEW_DB" \
         "$WITHOUT_WALLET" \
         "$WITHOUT_UPNPC" \
