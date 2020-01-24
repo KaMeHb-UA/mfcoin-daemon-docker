@@ -87,9 +87,9 @@ RUN export LDFLAGS="$(cat /ldflags)" && \
         --without-gui
 
 RUN make -j$(nproc --all) && \
-    make install
-# && \
-#    strip /usr/bin/mfcoin*
+    make install && \
+    strip /usr/bin/mfcoind
+
 
 FROM alpine
 
