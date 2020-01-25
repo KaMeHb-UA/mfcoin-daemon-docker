@@ -1,24 +1,3 @@
-FROM debian AS berkleydb
-
-RUN apt update && \
-    apt install -y build-essential libc6-dev
-
-# Download sources and some patching
-
-ADD https://download.oracle.com/berkeley-db/db-4.8.30.NC.tar.gz /db
-
-ADD http://git.savannah.gnu.org/gitweb/?p=config.git;a=blob_plain;f=config.guess;hb=HEAD /db/db-4.8.30.NC/dist/config.guess
-
-RUN cd /db && sed s/__atomic_compare_exchange/__atomic_compare_exchange_db/g -i /db/db-4.8.30.NC/dbinc/atomic.h
-
-WORKDIR /db/db-4.8.30.NC/build_unix
-
-RUN ../dist/configure --enable-cxx --disable-shared --with-pic --prefix=/opt/db
-
-RUN make -j$(nproc --all) && \
-    make install
-
-
 FROM debian AS builder
 
 ARG VERSION=latest
@@ -26,7 +5,7 @@ ARG WALLET=true
 ARG UPNPC=true
 ARG USE_OLD_BERKLEYDB=true
 
-COPY --from=berkleydb /opt/db /opt/db
+COPY --from=kamehb/berkleydb4.8-dev /opt/db /opt/db
 
 RUN apt update && \
     apt install -y build-essential libc6-dev binutils git autoconf pkg-config automake libtool libdb-dev libdb++-dev libboost-all-dev libssl-dev libminiupnpc-dev libevent-dev
