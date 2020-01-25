@@ -1,15 +1,15 @@
 FROM debian AS berkleydb
 
 RUN apt update && \
-    apt install -y build-essential curl libc6-dev
+    apt install -y build-essential libc6-dev
 
 # Download sources and some patching
-RUN mkdir /db && \
-    mkdir -p /opt/db && \
-    cd /db && \
-    curl https://download.oracle.com/berkeley-db/db-4.8.30.NC.tar.gz | tar xzf - && \
-    sed s/__atomic_compare_exchange/__atomic_compare_exchange_db/g -i /db/db-4.8.30.NC/dbinc/atomic.h && \
-    curl 'http://git.savannah.gnu.org/gitweb/?p=config.git;a=blob_plain;f=config.guess;hb=HEAD' > /db/db-4.8.30.NC/dist/config.guess
+
+ADD https://download.oracle.com/berkeley-db/db-4.8.30.NC.tar.gz /db
+
+ADD http://git.savannah.gnu.org/gitweb/?p=config.git;a=blob_plain;f=config.guess;hb=HEAD /db/db-4.8.30.NC/dist/config.guess
+
+RUN cd /db && sed s/__atomic_compare_exchange/__atomic_compare_exchange_db/g -i /db/db-4.8.30.NC/dbinc/atomic.h
 
 WORKDIR /db/db-4.8.30.NC/build_unix
 
