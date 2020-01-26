@@ -10,7 +10,7 @@ COPY --from=kamehb/berkleydb4.8-dev /opt/db /opt/db
 RUN apt update && \
     apt install -y build-essential libc6-dev binutils git autoconf pkg-config automake libtool libdb-dev libdb++-dev libboost-all-dev libssl-dev libminiupnpc-dev libevent-dev
 
-RUN git clone https://github.com/MFrCoin/MFCoin.git
+COPY . /MFCoin
 
 WORKDIR /MFCoin
 
