@@ -1,46 +1,19 @@
 # MFCoin daemon
 This repository contains a dockerfile for mfcoin daemon
 
-## Images naming
-This section describes what the naming rules used in autobuilds on Docker Hub.
-
-Modificators:
-```sh
-without_wallet
-without_upnpc
-new_db
-new_db-without_upnpc
-minimal
-```
-Versioning:
-like on GitHub stripping leading `v.`  
-For example release `v.3.0.0.2` will be named as `3.0.0.2`. Also there is `latest` version (used by default) that is compiled on every commit from the default git branch.
-
-Versions and modificators are not required for naming. If version is not specified `latest` will be used. If modificator is not specified no one will be used (walled on berkleydb4.8 and miniupnpc are included)
-
-Main naming rule: `kamehb/mfc-wallet-daemon:VERSION(-MODIFICATOR)`
-
-Examples:
-```sh
-kamehb/mfc-wallet-daemon # equivalent of kamehb/mfc-wallet-daemon:latest
-kamehb/mfc-wallet-daemon:3.0.0.2
-kamehb/mfc-wallet-daemon:new_db # equivalent of kamehb/mfc-wallet-daemon:latest-new_db
-kamehb/mfc-wallet-daemon:3.0.0.2-new_db
-```
-
 ## Build by yourself
-There is no special prerequisites for building standard image (contains wallet functionality based on berkleydb4.8 and firewall-jumping functionality). To build it:
+There is no special prerequisites for building standard image (contains wallet and databases procession based on berkleydb4.8 and firewall-jumping functionality). To build it:
 ```sh
-docker build .
+$ docker build .
 ```
 
 ### Args
 Additionally you can use build args to customize the process:
 
 #### VERSION
-You can define what version to use. For example, `3.0.0.2` will switch git source tree to the branch `tags/v.3.0.0.2`. Default: `latest`
+You can define what version to use. For example, `0.8.1.0` will switch git source tree to the branch `tags/v.0.8.1.0`. Default: `latest`
 ```sh
-VERSION=3.0.0.2
+VERSION=0.8.1.0
 ```
 
 #### WALLET
@@ -62,23 +35,51 @@ USE_OLD_BERKLEYDB=false
 ```
 
 ### Build example
-Build minimal 3.0.0.2 version:
+Build minimal 0.8.1.0 version:
 ```sh
-docker build . --build-arg WALLET=false --build-arg UPNPC=false --build-arg VERSION=3.0.0.2
+$ docker build . --build-arg WALLET=false --build-arg UPNPC=false --build-arg VERSION=0.8.1.0
 ```
 In example above there is no difference between BerkleyDB versions — wallet isn't used so BerkleyDB isn't installed
 
+### Build for a few architectures
+
+#### Prerequisites
+
+1. Docker [buildx](https://github.com/docker/buildx) command must be available.
+1. Enable binfmt_misc by running <pre><code land="sh">$ docker run --rm --privileged docker/binfmt:66f9012c56a8316f9244ffd7622d7c21c1f6f28d</code></pre>
+1. Create a new builder with multi-arch support <pre><code land="sh">$ docker buildx create --use --name mybuilder</code></pre> or swicth to existing <pre><code land="sh">$ docker buildx use mybuilder</code></pre>
+
+#### Build process
+
+In example above platforms defined as `linux/arm,linux/arm64,linux/amd64` and pushing to docker hub is executed immidiately (if you don't want so, just delete `--push`)
+
+```sh
+$ docker buildx build -t YOUR/TAG --platform=linux/arm,linux/arm64,linux/amd64 . --push
+```
+
 ## Run
-You may feel free to use this image whatever you want, but there is need in mounting data volume to store daemon data outside the container. If you want it of course. In examples we will use `/mfc-data` as a permanent storage. Besides there is no need in special security or network flags, etc.
+You may feel free to use this image whatever you want, but there is need in mounting data volume to store daemon data outside the container. If you want it of course. In examples we will use `./data/daemon` as a permanent storage. Besides there is no need in special security or network flags, etc.
 
 ### Simply run container with permanent storage
+
+#### Prerequisites
+
+Directory on host machine (in this case ./data/daemon) must be available for reading, writing and executing by user with uid 405. Example:
 ```sh
-docker run -it -v /mfc-data:/data kamehb/mfc-wallet-daemon
+$ mkdir -p data/daemon
+$ chmod 700 data/daemon
+$ sudo chown 405:nobody data/daemon
+```
+#### Run
+
+```sh
+$ docker run -it -v "$(pwd)"/data/daemon:/data kamehb/mfc-wallet-daemon
 ```
 
 ### Run minimal container as a rpc server
+\* See running with permanent storage first
 ```sh
-docker run -it -v /mfc-data:/data -p 22825:22825 kamehb/mfc-wallet-daemon:minimal -rpcport=22825 -rpcuser=RPC_USER -rpcpassword=RPC_PASS -reindex -txindex -rpcallowip=0.0.0.0/0
+$ docker run -it -v "$(pwd)"/data/daemon:/data -p 22825:22825 kamehb/mfc-wallet-daemon:minimal -rpcport=22825 -rpcuser=RPC_USER -rpcpassword=RPC_PASS -reindex -txindex -rpcallowip=0.0.0.0/0
 ```
 Note: running rpc server with mapping to host network is not needed in general. If it applicable just setup rpc server and services that using it on detached network. The simpliest way to achieve is described below in docker-compose config
 
@@ -87,14 +88,9 @@ There is simple config example for services that requires mfcoin daemon to work 
 ```yml
 version: '3.3'
 
-networks:
-  mfcservices:
-
 services:
-  daemon:
-    image: mfc-wallet-daemon:3.0.0.2-minimal
-    networks:
-      - mfcservices
+  mfcoind:
+    image: kamehb/mfc-wallet-daemon
     volumes:
       - ./data/daemon:/data
     command:
@@ -106,14 +102,12 @@ services:
       - -rpcallowip=0.0.0.0/0
   myservice:
     image: myimage
-    networks:
-      - mfcservices
     volumes:
       - ./data/myservice:/data
-    command:
-      - connect
-      - -user=${RPC_USER}
-      - -pass=${RPC_PASS}
-      - daemon:22825
+    environment:
+      - MFCOIND_USER=${RPC_USER}
+      - MFCOIND_PASS=${RPC_PASS}
+      - MFCOIND_PORT=22825
+      - MFCOIND_HOST=mfcoind
 ```
 Note: the best way to store user and password for rpc service in docker-compose is .env file. Do not forget to chmod it to 600

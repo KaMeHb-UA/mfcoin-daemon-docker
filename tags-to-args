@@ -1,5 +1,0 @@
-without_wallet WALLET=false
-without_upnpc UPNPC=false
-new_db USE_OLD_BERKLEYDB=false
-new_db-without_upnpc USE_OLD_BERKLEYDB=false UPNPC=false
-minimal WALLET=false UPNPC=false

@@ -1,29 +1,5 @@
-#!/bin/bash
+#!/bin/sh
 
-prepare_args() {
-    for i in "${@:2}"; do
-        echo "--build-arg"
-        echo "$i"
-    done
-}
+export DOCKER_CLI_EXPERIMENTAL=enabled
 
-print_tag_args() {
-    line="$(cat ./tags-to-args | grep "$(print_tag) ")"
-    prepare_args $line
-}
-
-print_version() {
-    echo "$DOCKER_TAG" | grep -Po "^(\d.)+\d" || echo latest
-}
-
-print_tag() {
-    echo "$DOCKER_TAG" | sed "s/$(print_version)-//"
-}
-
-print_build_args() {
-    echo '--build-arg'
-    echo VERSION="$(print_version)"
-    print_tag_args
-}
-
-docker build $(print_build_args) -f "$DOCKERFILE_PATH" -t "$IMAGE_NAME" .
+docker buildx -f "$DOCKERFILE_PATH" -t "$IMAGE_NAME" --platforms="linux/arm,linux/arm64,linux/amd64" .
